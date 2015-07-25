@@ -148,7 +148,7 @@
          range-to-keep (first (for [[[k v] [_ m]] (map vector
                                                        (partition 2 the-list)
                                                        (partition 2 (:lc-metas rc)))
-                                    :when (contains? features k)]
+                                    :when (= k target-feature)]
                                 m))
          {form-start-line :line
           form-end-line :end-line
