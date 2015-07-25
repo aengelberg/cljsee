@@ -83,7 +83,11 @@
   [s]
   (with-redefs [rdr/read-eval disabled-read-eval
                 rdr/read-cond special-read-cond]
-    (rdr/read {:read-cond :preserve} (t/indexing-push-back-reader s))))
+    (let [rdr (t/indexing-push-back-reader s)]
+      (->> #(rdr/read {:read-cond :preserve :eof ::eof} rdr)
+           repeatedly
+           (take-while #(not= % ::eof))
+           doall))))
 
 (defn find-read-conds
   "Returns all of wrapped reader-conditional constructs within a form."
@@ -92,7 +96,11 @@
     (clojure.walk/prewalk (fn [form]
                             (when (instance? ReadCond form)
                               (swap! read-conds conj form))
-                            form)
+                            (if (or (instance? ReadEval form)
+                                    (instance? ReadCond form))
+                              ;; turn records -> maps so we can walk properly
+                              (into {} form)
+                              form))
                           form)
     @read-conds))
 
