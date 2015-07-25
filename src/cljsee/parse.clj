@@ -1,4 +1,4 @@
-(ns cljsee.core
+(ns cljsee.parse
   (:require [clojure.string :as str]
             [clojure.tools.reader :as rdr]
             [clojure.tools.reader.impl.commons :refer [read-past]]
@@ -10,23 +10,6 @@
   [pred rdr]
   (let [ch (read-past pred rdr)]
     (t/unread rdr ch)))
-
-(defrecord MetaWrapper [expr])
-
-(defn wrapped-expr? [x]
-  (instance? MetaWrapper x))
-
-(defn unwrap [x]
-  (if (wrapped-expr? x)
-    (:expr x)
-    x))
-
-(defn add-meta
-  "Like with-meta, but will wrap an object with WrappedExpr if it does not already implement IObj."
-  [obj m]
-  (if (instance? clojure.lang.IObj obj)
-    (with-meta obj m)
-    (recur (->WrappedExpr obj) m)))
 
 (defrecord ReadEval [expr])
 
