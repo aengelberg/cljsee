@@ -48,68 +48,58 @@
   (let [form (#'rdr/read* rdr true nil opts pending-forms)]
     (->ReadEval form)))
 
-(defn- read-list-with-wrappers
+(defrecord ReadCond [splicing form lc-metas]) ; stores a form (:clj 1 :cljs 2 ...) and a list of
+                                              ; line-column metadata for each element within.
+
+(defn special-read-cond
   [rdr _ opts pending-forms]
-  (let [[start-line start-column] (#'rdr/starting-line-col-info rdr)]
-    (binding [rdr/*read-delim* true]
-      (loop [a (transient [])]
+  (let [[rc-start-line rc-start-column] (starting-line-col-info-double rdr)
+        ch (t/read-char rdr)
+        _ (when-not ch
+            (t/reader-error rdr "EOF while reading character"))
+        splicing (= ch \@)
+        ch (if splicing (t/read-char rdr) ch)
+        _ (when (and splicing (not @#'rdr/*read-delim*))
+            (t/reader-error rdr "cond-splice not in list"))
+        ch (if (whitespace? ch) (read-past whitespace? rdr) ch)
+        _ (when-not ch
+            (t/reader-error rdr "EOF while reading character"))
+        _ (when (not= ch \()
+            (throw (RuntimeException. "read-cond body must be a list")))]
+    (binding [rdr/*suppress-read* true
+              rdr/*read-delim* true]
+      (loop [forms []
+             lc-metas []]
         (read-while whitespace? rdr)
         (let [[form-start-line form-start-column] (starting-line-col-info-zero rdr)
               form (#'rdr/read* rdr false @#'rdr/READ_EOF \) opts pending-forms)
               [form-end-line form-end-column] (#'rdr/ending-line-col-info rdr)]
           (if (identical? form @#'rdr/READ_FINISHED)
-            (let [[end-line end-column] (#'rdr/ending-line-col-info rdr)
-                  the-list (persistent! a)]
-              (with-meta (if (empty? the-list)
-                           '()
-                           (clojure.lang.PersistentList/create the-list))
-                {:line start-line
-                 :column start-column
-                 :end-line end-line
-                 :end-column end-column}))
+            (let [[rc-end-line rc-end-column] (#'rdr/ending-line-col-info rdr)]
+              (with-meta
+                (->ReadCond splicing
+                            forms
+                            lc-metas)
+                {:line rc-start-line
+                 :column rc-start-column
+                 :end-line rc-end-line
+                 :end-column rc-end-column}))
             (if (identical? form @#'rdr/READ_EOF)
               (t/reader-error rdr "EOF while reading"
-                              (when start-line
-                                (str ", starting at line " start-line
-                                     " and column " start-column)))
-              (let [form (add-meta form
-                           {:line form-start-line
-                            :column form-start-column
-                            :end-line form-end-line
-                            :end-column form-end-column})]
-                (recur (conj! a form))))))))))
-
-(defn- read-cond-with-wrappers
-  "Returns a (WrappedExpr. (reader-conditional [(WrappedExpr. x) (WrappedExpr. y) ...] splicing))
-  with line-col metadata on each WrappedExpr. Note: the inner wrappers may have start-line/start-col
-  information that includes leading whitespace, but that will not matter for our purposes."
-  [rdr _ opts pending-forms]
-  (let [[rc-start-line rc-start-column] (starting-line-col-info-double rdr)]
-    (if-let [ch (t/read-char rdr)]
-      (let [splicing (= ch \@)
-            ch (if splicing (t/read-char rdr) ch)]
-        (when splicing
-          (when-not @#'rdr/*read-delim*
-            (t/reader-error rdr "cond-splice not in list")))
-        (if-let [ch (if (whitespace? ch) (read-past whitespace? rdr) ch)]
-          (if (not= ch \()
-            (throw (RuntimeException. "read-cond body must be a list"))
-            (binding [rdr/*suppress-read* true]
-              (let [form (read-list-with-wrappers rdr ch opts pending-forms)
-                    [rc-end-line rc-end-column] (#'rdr/ending-line-col-info rdr)]
-                (add-meta
-                 (reader-conditional form splicing)
-                 {:line rc-start-line
-                  :column rc-start-column
-                  :end-line rc-end-line
-                  :end-column rc-end-column}))))
-          (t/reader-error rdr "EOF while reading character")))
-      (t/reader-error rdr "EOF while reading character"))))
+                              (when rc-start-line
+                                (str ", starting at line " rc-start-line
+                                     " and column " rc-start-column)))
+              (let [lc-meta {:line form-start-line
+                             :column form-start-column
+                             :end-line form-end-line
+                             :end-column form-end-column}]
+                (recur (conj forms form)
+                       (conj lc-metas lc-meta))))))))))
 
 (defn modified-read-string
   [s]
   (with-redefs [rdr/read-eval disabled-read-eval
-                rdr/read-cond read-cond-with-wrappers]
+                rdr/read-cond special-read-cond]
     (rdr/read {:read-cond :preserve} (t/indexing-push-back-reader s))))
 
 (defn find-read-conds
@@ -117,11 +107,9 @@
   [form]
   (let [read-conds (atom ())]
     (clojure.walk/prewalk (fn [form]
-                            (if (and (wrapped-expr? form)
-                                     (reader-conditional? (unwrap form)))
-                              (do (swap! read-conds conj form)
-                                  (:form (unwrap form))) ; extract the sub-list so we can continue
-                              form))
+                            (when (instance? ReadCond form)
+                              (swap! read-conds conj form))
+                            form)
                           form)
     @read-conds))
 
@@ -129,7 +117,6 @@
   "Takes a string, and returns a function that takes a line and col and returns a character index."
   [str]
   (let [lines (re-seq #".*\r?\n?" str)
-        _ (println lines)
         line-num->index (loop [lines lines
                                line-num 1
                                num-chars-so-far 0
@@ -150,26 +137,51 @@
   (.replace text start end (str/replace (.subSequence text start end) #"\S" " ")))
 
 (defn pick-form-from-read-cond!
-  [^StringBuilder text wrapped-rc features lc->i]
+  [^StringBuilder text rc features lc->i]
   (let [{rc-start-line :line
          rc-end-line :end-line
          rc-start-column :column
-         rc-end-column :end-column} (meta wrapped-rc)
-         rc (unwrap wrapped-rc)
+         rc-end-column :end-column} (meta rc)
          the-list (:form rc)
-         form-to-keep (first (for [[wrapped-key wrapped-val] (partition 2 the-list)
-                                   :when (contains? features (unwrap wrapped-key))]
-                               wrapped-val))
+         available-features (map first (partition 2 the-list))
+         target-feature (or (some features available-features) :default)
+         range-to-keep (first (for [[[k v] [_ m]] (map vector
+                                                       (partition 2 the-list)
+                                                       (partition 2 (:lc-metas rc)))
+                                    :when (contains? features k)]
+                                m))
          {form-start-line :line
           form-end-line :end-line
           form-start-column :column
-          form-end-column :end-column} (meta form-to-keep)]
-    (if-not (:splicing rc)
+          form-end-column :end-column} range-to-keep]
+    (cond
+      (not range-to-keep)
+      (doto text
+        (white-out-str! (lc->i rc-start-line rc-start-column)
+                        (lc->i rc-end-line rc-end-column)))
+
+      (not (:splicing rc))
       ;; read cond NOT splicing #?(...)
       (doto text
         (white-out-str! (lc->i rc-start-line rc-start-column)
                         (lc->i form-start-line form-start-column))
         (white-out-str! (lc->i form-end-line form-end-column)
                         (lc->i rc-end-line rc-end-column)))
+
+      :else
       ;; read cond splicing #?@(...)
-      )))
+      (doto text
+        (white-out-str! (lc->i rc-start-line rc-start-column)
+                        (inc (lc->i form-start-line form-start-column)))
+        (white-out-str! (dec (lc->i form-end-line form-end-column))
+                        (lc->i rc-end-line rc-end-column))))))
+
+(defn process-source-code
+  [code features]
+  (let [sb (StringBuilder. code)
+        lc->i (curry-line-col->index code)
+        data (modified-read-string code)
+        readconds (find-read-conds data)]
+    (doseq [rc readconds]
+      (pick-form-from-read-cond! sb rc features lc->i))
+    (str sb)))
