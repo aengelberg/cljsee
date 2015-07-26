@@ -1,4 +1,4 @@
-(ns cljsee-test.core)
+(ns testproj1.core)
 
 #?(:clj
    (defn foo
