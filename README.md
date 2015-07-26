@@ -36,7 +36,7 @@ Cljsee aims to be similar if not identical to cljx in its `project.clj` syntax:
                      :output-path "target/classes"
                      :rules :clj}
                     {:source-paths ["src/"]
-                     :output-path "target/classes"
+                     :output-path "target/generated/cljs"
                      :rules :cljs}]})
 ```
 
@@ -77,7 +77,7 @@ The following Clojure source is generated:
              [my-macro]])
           (:import my.class) )
 ```
-In other words, the irrelevant code is "whited out" in the target files. This strategy preserves
+Just like in cljx, the irrelevant code is "whited out" in the target files. This strategy preserves
 the line-column placement of the remaining code, so if errors arise, you can track them down in
 your original cljc file.
 
