@@ -1,4 +1,4 @@
-Ever since cljx became [deprecated](https://github.com/lynaghk/cljx/commit/48c8f912db9fa7ac363e346664b98c7d64bf6e3b), there has been no (non-deprecated) way to write Clojure 
+Ever since cljx became [deprecated](https://github.com/lynaghk/cljx/commit/48c8f912db9fa7ac363e346664b98c7d64bf6e3b), there has been no (non-deprecated) way to write portable code that is compatible with Clojure 1.6 and below.
 
 # cljsee
 
