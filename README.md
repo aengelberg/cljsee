@@ -35,7 +35,7 @@ $ lein cljsee auto
 It's encouraged to add cljsee as a "prep task" so that your cljc files get backported before critical tasks are performed such as jarring or deploying.
 
 ```clojure
-:prep-tasks [["cljx" "once"]]
+:prep-tasks [["cljsee" "once"]]
 ```
 
 Note that even though the `cljc` format is no longer in the way of Clojure backwards-compatibility, there are other factors (such as missing features or unfixed bugs) to be careful of when supporting older versions of Clojure. To test that your library works on Clojure 1.6.0, for instance, you can add cljsee builds to your test namespaces like so:
