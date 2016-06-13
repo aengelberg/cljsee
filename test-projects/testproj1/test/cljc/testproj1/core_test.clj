@@ -3,4 +3,5 @@
 
 (deftest a-test
   (testing "FIXME, I fail."
-    (is (= 1 1))))
+    (prn *clojure-version*)
+    (is (= 1 0))))
