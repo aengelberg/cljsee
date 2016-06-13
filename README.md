@@ -55,8 +55,14 @@ Just like in cljx, the irrelevant code is "whited out" in the target files. This
 the line-column placement of the remaining code, so if errors arise, you can track them down in
 your original cljc file.
 
+## Credits
+
+Alex Engelberg is the author of cljsee. Issues and pull requests are welcome.
+
+Some functions were copied from Kevin Lynagh's [cljx](https://github.com/lynaghk/cljx) library.
+
 ## License
 
-Copyright © 2015 FIXME
+Copyright © 2016 Alex Engelberg
 
 Distributed under the Eclipse Public License, the same as Clojure.
