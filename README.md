@@ -1,5 +1,7 @@
 # cljsee
 
+[![CircleCI](https://circleci.com/gh/aengelberg/cljsee.svg?style=svg)](https://circleci.com/gh/aengelberg/cljsee)
+
 Cljsee is a Leiningen plugin that aims to help library authors to write portable code in the `.cljc` format that can be used by projects that run Clojure 1.6 or below. It accomplishes this by parsing the cljc conditionals as a compile-time step and producing `.clj` and `.cljs` files with only the relevant code.
 
 Cljsee performs a very similar role to the now-deprecated [cljx](https://github.com/lynaghk/cljx) plugin (and I've intentionally modeled cljsee's build configuration after cljx's syntax to make it easy to switch over). But users of cljsee have access to the modern reader conditionals that are official to the Clojure language, including the splicing (`#?@(...)`) conditional, instead of the `#+clj / #+cljs` syntax specific to the cljx plugin. 
