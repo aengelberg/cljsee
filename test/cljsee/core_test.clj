@@ -65,7 +65,18 @@
 
     ;; same if we switch it around
     "#=(/ #?@(:a [1 0]))" #{:a}
-    "#=(/         1 0  )")
+    "#=(/         1 0  )"
+
+    ;; test keywords
+    "#?(:a :simple-keyword)" #{:a} "      :simple-keyword "
+    "#?(:a :namespaced/keyword)" #{:a} "      :namespaced/keyword "
+    "#?(:a ::alias/keyword)" #{:a} "      ::alias/keyword "
+    "#?(:a :simple-keyword)" #{:B} "                      "
+    "#?(:a :namespaced/keyword)" #{:B} "                          "
+    "#?(:a ::alias/keyword)" #{:B} "                      "
+    ":simple-keyword" #{:a} ":simple-keyword"
+    ":namespaced/keyword" #{:a} ":namespaced/keyword"
+    "::alias/keyword" #{:a} "::alias/keyword")
 
   ;; ensure comments don't prevent the readcond from parsing, but we
   ;; don't guarantee whether they end up in the result of the parse.
