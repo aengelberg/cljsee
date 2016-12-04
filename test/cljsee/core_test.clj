@@ -76,7 +76,10 @@
     "#?(:a ::alias/keyword)" #{:B} "                      "
     ":simple-keyword" #{:a} ":simple-keyword"
     ":namespaced/keyword" #{:a} ":namespaced/keyword"
-    "::alias/keyword" #{:a} "::alias/keyword")
+    "::alias/keyword" #{:a} "::alias/keyword"
+    ":2pac" {} ":2pac"
+    ":2p/ac" {} ":2p/ac"
+    "::2p/ac" {} "::2p/ac")
 
   ;; ensure comments don't prevent the readcond from parsing, but we
   ;; don't guarantee whether they end up in the result of the parse.
