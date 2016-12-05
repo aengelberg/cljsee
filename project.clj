@@ -1,4 +1,4 @@
-(defproject cljsee "0.1.0"
+(defproject cljsee "0.1.1-SNAPSHOT"
   :description "Backporting cljc"
   :url "http://github.com/aengelberg/cljsee"
   :license {:name "Eclipse Public License"
