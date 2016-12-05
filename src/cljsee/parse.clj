@@ -31,6 +31,17 @@
   (let [form (#'rdr/read* rdr true nil opts pending-forms)]
     (->ReadEval form)))
 
+(defn special-read-keyword
+  "Read ::alias/keywords without namespace context"
+  [rdr _ opts pending-forms]
+  (assert (empty? pending-forms))
+  (let [tok (#'rdr/read-token rdr \:)
+        sl (str/index-of tok \/)]
+    (keyword (when sl (subs tok 1 sl))
+             (if sl
+               (subs tok (inc sl))
+               (subs tok 1)))))
+
 (defrecord ReadCond [splicing form lc-metas]) ; stores a form (:clj 1 :cljs 2 ...) and a list of
                                               ; line-column metadata for each element within.
 
@@ -82,6 +93,7 @@
 (defn modified-read-string
   [s]
   (with-redefs [rdr/read-eval disabled-read-eval
+                rdr/read-keyword special-read-keyword
                 rdr/read-cond special-read-cond]
     (let [rdr (t/indexing-push-back-reader s)]
       (->> #(rdr/read {:read-cond :preserve :eof ::eof} rdr)
