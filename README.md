@@ -15,7 +15,7 @@ In your `project.clj`, include cljsee as a dependency, then add a cljsee build c
 ```clojure
 (defproject my-cool-backwards-compatible-project
   ...
-  :plugins [[cljsee "0.1.0-SNAPSHOT"]]
+  :plugins [[cljsee "0.1.0"]]
   :cljsee {:builds [{:source-paths ["src/"]
                      :output-path "target/classes"
                      :rules :clj}
